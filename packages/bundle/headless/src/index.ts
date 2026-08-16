@@ -174,15 +174,32 @@ async function run(ctx: Context, task: string, io: HeadlessIo): Promise<void> {
   // host plane and the agent reads them from the global layer. A deployment
   // that DOES configure one has to join it here first
   // (@deepseek-ai/dsh-agent-presets README, "Composing a child agent").
-  const { agent } = await agents.create({
-    sessionId: SessionId(`session-${randomUUID()}`),
-    meta: { cwd: process.cwd() },
-    agentOptions: { provider: selection.provider, model: selection.model },
-    setup: (agentCtx) => {
-      const selected: ModelSelectionRef = { current: selection, assembled: undefined }
-      installModelSelection(agentCtx, selected)
-    },
-  })
+  // Local patch (ds-do --continue): resume a persisted session when the caller
+  // names one, so a follow-up task reuses the same conversation instead of
+  // rebuilding context from scratch on every dispatch (prompt-cache hit).
+  // Unset/empty keeps the stock one-shot behaviour: a brand-new session.
+  const resumeSessionId = process.env.DSH_SESSION_ID?.trim()
+  const agentOptions = { provider: selection.provider, model: selection.model }
+  const { agent } = resumeSessionId === undefined || resumeSessionId === ''
+    ? await agents.create({
+      sessionId: SessionId(`session-${randomUUID()}`),
+      meta: { cwd: process.cwd() },
+      agentOptions,
+      setup: (agentCtx) => {
+        const selected: ModelSelectionRef = { current: selection, assembled: undefined }
+        installModelSelection(agentCtx, selected)
+      },
+    })
+    : await agents.resume({
+      resumeSessionId: SessionId(resumeSessionId),
+      agentOptions,
+      setup: (agentCtx) => {
+        const selected: ModelSelectionRef = { current: selection, assembled: undefined }
+        installModelSelection(agentCtx, selected)
+      },
+    })
+  // The wrapper records this so the next dispatch can pass it back via DSH_SESSION_ID.
+  io.stderr.write(`dsh-session-id: ${agent.session.id}\n`)
   await agent.whenIdle()
   const firstSeq = agent.session.seq
   const stopReasoning = streamReasoning(ctx, agent, io.stderr)
