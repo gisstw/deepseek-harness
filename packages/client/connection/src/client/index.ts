@@ -11,6 +11,7 @@ import {
   type ConnectionSinks,
   type ConnectionState,
 } from './connection.ts'
+import { createAuthFailureReload } from './auth-reload.ts'
 import { createFixtureConnectionRpc } from './fixture.ts'
 import { createWebConnectionRpc, type RpcFetch, type RpcStreamOpen } from './rpc.ts'
 import { isLoopbackHostname } from '../loopback-hostname.ts'
@@ -186,7 +187,20 @@ export function apply(ctx: Context): void {
   const fixture = pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('fixture')
   const fixtureRpc = fixture ? createFixtureConnectionRpc() : undefined
   const transport = (globalThis as ClientTransportGlobal).__DSH_TRANSPORT__
-  const rpc = fixtureRpc ?? createWebConnectionRpc(transport?.fetch, transport?.openStream)
+  // A page served through an authentication proxy recovers from an expired
+  // proxy session only by navigating; see createAuthFailureReload.
+  const reloadForAuthFailure = createAuthFailureReload()
+  const carrierFetch: RpcFetch = transport?.fetch ?? ((input, init) => globalThis.fetch(input, init))
+  const rpcFetch: RpcFetch = async (input, init) => {
+    const response = await carrierFetch(input, init)
+    if (response.status === 401) reloadForAuthFailure()
+    return response
+  }
+  const rpc = fixtureRpc ?? createWebConnectionRpc(rpcFetch, transport?.openStream)
+  // Only a page served over a real network authority can sit behind such a
+  // proxy; loopback and fixture/transport shells keep the infinite retry.
+  const servedBehindProxy = !fixture && transport === undefined
+    && pageLocation !== undefined && !isLoopbackHostname(pageLocation.hostname)
   let generationSource: ConnectionGenerationSource | undefined
   let owner: ConnectionOwner | undefined
   let generationId = 0
@@ -276,6 +290,10 @@ export function apply(ctx: Context): void {
           }
           if (!ownsGeneration()) return
           publishState(state)
+          // The terminal disconnected state on a proxy-served page means the
+          // carrier exhausted its backoff; reload so the proxy can answer with
+          // its login redirect. A loopback/fixture shell never reaches here.
+          if (state === 'disconnected' && servedBehindProxy) reloadForAuthFailure()
           sinks.onStateChange?.(state)
         },
       }, config ?? {})

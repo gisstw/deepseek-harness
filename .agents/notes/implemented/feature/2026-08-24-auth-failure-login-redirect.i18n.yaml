@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-auth-failure-login-redirect.md
-2026-08-24-auth-failure-login-redirect.md: ae2a9bd92abf39889239ecac88e5114563087442
-2026-08-24-auth-failure-login-redirect.zh.md: 57f4898aaa5ebe2e130c9c15ebcf97ea4243cb0b
+2026-08-24-auth-failure-login-redirect.md: 005147a03cadd11ef221dcd95a84334f16f4e840
+2026-08-24-auth-failure-login-redirect.zh.md: b1b629edf72fef2c3a83142f6eee660dc830e668
