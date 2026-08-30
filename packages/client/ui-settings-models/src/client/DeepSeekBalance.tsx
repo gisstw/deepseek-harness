@@ -1,6 +1,6 @@
 /** DeepSeek account balance line shown above the provider rows. */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { DeepSeekBalanceValue } from '@deepseek-ai/dsh-api-settings-controller/types'
@@ -47,25 +47,39 @@ function amounts(value: DeepSeekBalanceValue): string | undefined {
  */
 export function DeepSeekBalance({ operations, t }: DeepSeekBalanceProps): ReactNode {
   const [state, setState] = useState<BalanceState>({ kind: 'loading' })
+  // Latest read wins, the way ModelsSettingsStore settles its own reloads: two
+  // Retry clicks leave two requests in flight, and without this the slower
+  // one's answer would land last and replace the newer one.
+  const generation = useRef(0)
+  const inFlight = useRef<AbortController | undefined>(undefined)
 
   const read = useCallback(() => {
-    let live = true
-    const controller = new AbortController()
+    const mine = ++generation.current
+    inFlight.current?.abort()
+    const attempt = new AbortController()
+    inFlight.current = attempt
     setState({ kind: 'loading' })
-    void operations.readDeepSeekBalance(controller.signal).then(
+    void operations.readDeepSeekBalance(attempt.signal).then(
       (value) => {
-        if (!live) return
+        if (mine !== generation.current) return
         setState({ kind: 'value', value })
       },
       (error: unknown) => {
-        if (!live) return
+        if (mine !== generation.current) return
         setState({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
       },
     )
-    return () => { live = false; controller.abort() }
   }, [operations])
 
-  useEffect(() => read(), [read])
+  useEffect(() => {
+    read()
+    // Abandoning the generation is what silences a late answer after unmount;
+    // the abort is for the request itself.
+    return () => {
+      generation.current++
+      inFlight.current?.abort()
+    }
+  }, [read])
 
   const body = ((): { text: string; retry: boolean } => {
     if (state.kind === 'loading') return { text: t('balanceLoading'), retry: false }

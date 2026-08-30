@@ -111,6 +111,37 @@ describe('the DeepSeek balance read', () => {
     expect(value.balances).toBeUndefined()
   })
 
+  it('hands an abandoned read its cancellation back instead of blaming the service', async () => {
+    const aborter = new AbortController()
+    const controller = await boot(
+      { DEEPSEEK_API_KEY: 'sk-live' },
+      (_input, init) => {
+        aborter.abort()
+        return Promise.reject(Object.assign(new Error('aborted'), { name: 'AbortError', signal: init.signal }))
+      },
+    )
+    await expect(controller.deepseekBalance(aborter.signal)).rejects.toThrow(/aborted/)
+  })
+
+  it('reports an empty currency list as unreadable rather than as no money', async () => {
+    const controller = await boot(
+      { DEEPSEEK_API_KEY: 'sk-live' },
+      () => Promise.resolve(jsonResponse({ is_available: true, balance_infos: [] })),
+    )
+    const value = await controller.deepseekBalance(new AbortController().signal)
+    expect(value.state).toBe('ok')
+    expect(value.balances).toEqual([])
+  })
+
+  it('says unconfigured when no credential provider is mounted at all', async () => {
+    const ctx = new Context()
+    const controller = new SettingsController(ctx, {}, {
+      fetchBalance: () => { throw new Error('unreachable') },
+    })
+    expect(await controller.deepseekBalance(new AbortController().signal))
+      .toEqual({ state: 'unconfigured' })
+  })
+
   it('never lets the key reach the failure text', async () => {
     const controller = await boot(
       { DEEPSEEK_API_KEY: 'sk-live' },
