@@ -48,7 +48,7 @@ API Gateway Client 把内部 `$events` logical stream 注册为唯一 generation
 <a id="model-experience"></a>
 ## 认证失效重新加载
 
-浏览器载体把任何 RPC 请求的 HTTP 401 视为前置认证代理的会话已过期：会话过期后 API/XHR 调用会收到 401，而一次全新的浏览器导航会被代理重定向到其登入页。因此它会在每次认证失效场景安排一次带守卫的整页重新加载（`createAuthFailureReload`）——并发 401 与重连放弃路径共用同一次导航，分页在背景时会延后到可见后再导航。经由非 loopback 权威地址访问的 Web 应用还会在连续 12 次重连失败后停止重连并重新加载，而不是无限重试，因为过期的代理会话无法自行恢复；loopback 以及 fixture/transport 壳保留原有的无限重试行为。`ConnectionConfig.maxRetries`（不设置即无限重试）与 `ConnectionSinks.onGiveUp` 向直接使用 `ConnectionController` 的消费方暴露该上限与终止信号。
+浏览器载体把任何 RPC 请求的 HTTP 401 视为前置认证代理的会话已过期：会话过期后 API/XHR 调用会收到 401，而一次全新的浏览器导航会被代理重定向到其登入页。因此它会在每次认证失效场景安排一次带守卫的整页重新加载（`createAuthFailureReload`）——并发 401 与重连放弃路径共用同一次导航，分页在背景时会延后到可见后再导航。经由非 loopback 权威地址访问的 Web 应用还会在连续 12 次重连失败后停止重连并重新加载，而不是无限重试，因为过期的代理会话无法自行恢复；loopback 以及 fixture/transport 壳保留原有的无限重试行为。`ConnectionConfig.maxRetries`（不设置即无限重试）与 `ConnectionSinks.onGiveUp` 向直接使用 `ConnectionController` 的消费方暴露该上限与终止信号。401 还有第二个来源——本 Harness 自身的 BrowserAuth，其 cookie 与任何代理无关地独立过期——重新加载无法从那一种恢复：index 对未认证请求返回 401 文本响应，操作者必须重新打开启动时打印的 URL。
 
 ## 模型体验
 
