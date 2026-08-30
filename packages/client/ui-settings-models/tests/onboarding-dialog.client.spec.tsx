@@ -108,6 +108,7 @@ function harness(options: {
       discoverModels: () => Promise.resolve(remoteOk([])),
     },
     settings: {
+      deepseekBalance: vi.fn(() => Promise.resolve(remoteOk({ state: 'unconfigured' }))),
       describe: () => Promise.resolve(remoteOk({
         writable: options.settingsWritable ?? true,
         hasDocument: false,

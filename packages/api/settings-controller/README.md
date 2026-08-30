@@ -29,6 +29,8 @@ Mount this package as a Loader entry in a profile that serves browser configurat
 
 `settings.describe()` returns deployment facts and every namespace under `redactSecrets: true`. `settings.update`, `settings.replace`, and `settings.mutate` expose the settings service's three write operations and return the namespace's new redacted view; stale writes use `settings-conflict` and other provider refusals use `settings-rejected`.
 
+`settings.deepseekBalance()` resolves the configured DeepSeek credential on the Host and reads the provider's account balance with it, so the write-only key never crosses to a browser. The answer is one of three states — `ok` with one line per currency, `unconfigured` when no key is stored, and `unavailable` when the read failed — because a caller that collapsed a failed read into a zero balance would report an empty account whenever the balance could not be asked for. Failure text is fixed and names only the failure class: a store or transport error can quote the record or request it was handling, and both carry the key.
+
 `settings.openSettingsDocument()` prepares the provider-owned document and opens it with the native text-editor intent. `settings.canOpenAgentPresetDirectory()` reports native-opening availability when the preset page becomes visible. `settings.openAgentPresetDirectory(id)` resolves only a user-authored preset and either opens its directory or returns the path when native opening is unavailable; neither open method accepts a browser-supplied filesystem target.
 
 -----
@@ -39,6 +41,8 @@ Mount this package as a Loader entry in a profile that serves browser configurat
 | Field | Default | Meaning |
 |---|---|---|
 | `nativeOpen` | platform-detected | Whether Agent preset directories can be handed to a native desktop opener |
+| `deepseekBalanceUrl` | `https://api.deepseek.com/user/balance` | Where the account balance is read from; a deployment fronting the provider with its own gateway points this at that route |
+| `deepseekKeyRef` | `DEEPSEEK_API_KEY` | Credential reference holding the key the balance read spends |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-api-settings-controller) is the exhaustive source for accepted fields and their JSDoc.
 
@@ -58,6 +62,7 @@ No direct effect; reading or writing these configuration values does not alter m
 <a id="known-limitations-and-deferred-work"></a>
 
 - The batch bound is fixed at 64 references and is not a deployment-configurable field.
+- The balance read covers DeepSeek only. MiniMax publishes no balance endpoint, so no second provider can be served the same way.
 
 <a id="dev-note"></a>
 ### Dev Note

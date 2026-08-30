@@ -10,6 +10,7 @@ import type {
   CredentialInfo, LlmDiscoveredModel, LlmModelDiscoveryRequest,
   SettingsNamespaceView, SettingsPathOpView,
 } from '@deepseek-ai/dsh-api-remotes/client'
+import type { DeepSeekBalanceValue } from '@deepseek-ai/dsh-api-settings-controller/types'
 
 /** What one namespace write answered. */
 export type SettingsWriteOutcome =
@@ -71,6 +72,15 @@ export interface ModelsOperations {
    * @returns the candidates, or the refusal.
    */
   discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest): Promise<ModelDiscoveryOutcome>
+  /**
+   * Read the DeepSeek account balance for the configured API key.
+   * The key never leaves the Host; the browser receives only the result.
+   * A transport refusal or abort is reported as the `unavailable` state rather
+   * than thrown, so the page always renders one of the three balance states.
+   * @param signal - caller lifetime; abort cancels the upstream request.
+   * @returns the balance, or the state explaining why there is none.
+   */
+  readDeepSeekBalance(signal: AbortSignal): Promise<DeepSeekBalanceValue>
 }
 
 /**
@@ -104,6 +114,12 @@ export function createModelsOperations(ctx: ClientContext): ModelsOperations {
       return response.ok
         ? { kind: 'found', models: response.value }
         : { kind: 'refused', message: response.error.message }
+    },
+    readDeepSeekBalance: async (signal) => {
+      const response = await ctx.remote.settings.deepseekBalance(signal)
+      return response.ok
+        ? response.value
+        : { state: 'unavailable', reason: response.error.message }
     },
   }
 }

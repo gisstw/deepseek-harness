@@ -675,3 +675,27 @@ select.input {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
+/* Account balance line: sits under the intro, ahead of the provider rows. */
+.balance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+
+.balanceLabel {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.balanceValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.balanceNote {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}

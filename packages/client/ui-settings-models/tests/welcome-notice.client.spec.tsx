@@ -62,6 +62,7 @@ function mount(
   const mutate = vi.fn(mutateImpl)
   const api = {
     settings: {
+      deepseekBalance: () => Promise.resolve(remoteAnswer({ state: 'unconfigured' })),
       describe: () => Promise.resolve(remoteAnswer({
         writable: true,
         hasDocument: false,
