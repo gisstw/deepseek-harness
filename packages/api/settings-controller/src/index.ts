@@ -150,8 +150,10 @@ export class SettingsController extends TypertRemoteService {
     this.openTextFile = internals.openTextFile ?? openNativeTextFile
     this.canOpenPath = internals.canOpenPath
       ?? (() => config.nativeOpen ?? (internals.openPath !== undefined || canOpenNativePath()))
+    /* v8 ignore start -- the real transport; every test injects its own. */
     this.fetchBalance = internals.fetchBalance
       ?? ((input, init) => globalThis.fetch(input, init))
+    /* v8 ignore stop */
     this.balanceUrl = config.deepseekBalanceUrl ?? DEFAULT_DEEPSEEK_BALANCE_URL
     this.balanceKeyRef = config.deepseekKeyRef ?? DEFAULT_DEEPSEEK_KEY_REF
     ctx.plugin(CredentialsController)

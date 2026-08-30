@@ -274,6 +274,18 @@ Host service backing the generated `ctx.remote.settings` namespace. Every remote
 @Remote describe(): SettingsDescribeValue
 
 /**
+ * Read the DeepSeek account balance for the configured API key.
+ *
+ * The key is resolved and spent here because it is a write-only credential:
+ * a browser must never receive it. Every failure keeps its own state — a
+ * page that showed a zero balance for an unreadable account would tell the
+ * operator they are out of money when nobody could ask.
+ * @param signal - caller lifetime; abort cancels the upstream request.
+ * @returns the balances, or the state explaining why there are none.
+ */
+@Remote async deepseekBalance(signal: AbortSignal): Promise<DeepSeekBalanceValue>
+
+/**
  * Report whether this deployment can open an authored Agent preset directory natively.
  * @returns true when the matching open operation is available.
  */

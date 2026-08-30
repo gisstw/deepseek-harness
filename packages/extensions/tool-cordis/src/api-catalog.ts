@@ -1961,6 +1961,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['TypertRemoteFailure when no settings provider is mounted.'],
       },
       {
+        signature: '@Remote async deepseekBalance(signal: AbortSignal): Promise<DeepSeekBalanceValue>',
+        description: 'Read the DeepSeek account balance for the configured API key.\n\nThe key is resolved and spent here because it is a write-only credential: a browser must never receive it. Every failure keeps its own state — a page that showed a zero balance for an unreadable account would tell the operator they are out of money when nobody could ask.',
+        parameters: [{ name: 'signal', description: 'caller lifetime; abort cancels the upstream request.' }],
+        returns: 'the balances, or the state explaining why there are none.',
+      },
+      {
         signature: '@Remote canOpenAgentPresetDirectory(): boolean',
         description: 'Report whether this deployment can open an authored Agent preset directory natively.',
         parameters: [],
@@ -3833,6 +3839,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CredentialRef',
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
+  },
+  {
+    name: 'DeepSeekBalanceLine',
+    declaration: 'export interface DeepSeekBalanceLine {\n    readonly currency: string;\n    readonly total: string;\n    readonly toppedUp: string;\n    readonly granted: string;\n}',
+  },
+  {
+    name: 'DeepSeekBalanceValue',
+    declaration: 'export interface DeepSeekBalanceValue {\n    readonly state: \'ok\' | \'unconfigured\' | \'unavailable\';\n    readonly isAvailable?: boolean;\n    readonly balances?: readonly DeepSeekBalanceLine[];\n    readonly reason?: string;\n}',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',

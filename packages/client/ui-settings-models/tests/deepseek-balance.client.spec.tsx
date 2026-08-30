@@ -12,6 +12,13 @@ afterEach(cleanup)
 
 const t = (key: keyof typeof en): string => en[key]
 
+/** One CNY balance answer, the shape the Host returns for a funded account. */
+const line = (total: string) => ({
+  state: 'ok',
+  isAvailable: true,
+  balances: [{ currency: 'CNY', total, toppedUp: total, granted: '0.00' }],
+})
+
 function apiReturning(...answers: unknown[]) {
   const deepseekBalance = vi.fn()
   for (const answer of answers) {
@@ -78,11 +85,6 @@ describe('the DeepSeek balance line', () => {
   })
 
   it('abandons the first answer when Retry starts a second read', async () => {
-    const line = (total: string) => ({
-      state: 'ok',
-      isAvailable: true,
-      balances: [{ currency: 'CNY', total, toppedUp: total, granted: '0.00' }],
-    })
     let releaseSecond!: (value: unknown) => void
     const deepseekBalance = vi.fn()
       .mockImplementationOnce(() => Promise.resolve({ ok: true, value: line('99.64') }))
@@ -113,6 +115,46 @@ describe('the DeepSeek balance line', () => {
     await waitFor(() => { expect(signals).toHaveLength(2) })
     expect(signals[0]?.aborted).toBe(true)
     expect(signals[1]?.aborted).toBe(false)
+  })
+
+  it('shows an answer with no currency field at all as unreadable', async () => {
+    const { api } = apiReturning({ state: 'ok', isAvailable: true })
+    render(<DeepSeekBalance api={api} t={t} />)
+    await waitFor(() => { expect(screen.getByText(en.balanceUnavailable)).toBeTruthy() })
+  })
+
+  it('drops a superseded answer that arrives after the newer read settled', async () => {
+    let releaseFirst!: (value: unknown) => void
+    const first = { settings: { deepseekBalance: () => new Promise((resolve) => { releaseFirst = resolve }) } }
+    const second = { settings: { deepseekBalance: () => Promise.resolve({ ok: true, value: line('50.00') }) } }
+    const view = render(<DeepSeekBalance api={first as never} t={t} />)
+    await waitFor(() => { expect(screen.getByText(en.balanceLoading)).toBeTruthy() })
+    // A new wire face starts a new generation, the way a reconnect would.
+    view.rerender(<DeepSeekBalance api={second as never} t={t} />)
+    await waitFor(() => { expect(screen.getByText('CNY 50.00')).toBeTruthy() })
+    releaseFirst({ ok: true, value: line('99.64') })
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(screen.getByText('CNY 50.00')).toBeTruthy()
+  })
+
+  it('drops a superseded rejection that arrives after the newer read settled', async () => {
+    let rejectFirst!: (error: unknown) => void
+    const first = { settings: { deepseekBalance: () => new Promise((_r, reject) => { rejectFirst = reject }) } }
+    const second = {
+      settings: {
+        deepseekBalance: () => Promise.resolve({
+          ok: true,
+          value: { state: 'unconfigured' },
+        }),
+      },
+    }
+    const view = render(<DeepSeekBalance api={first as never} t={t} />)
+    await waitFor(() => { expect(screen.getByText(en.balanceLoading)).toBeTruthy() })
+    view.rerender(<DeepSeekBalance api={second as never} t={t} />)
+    await waitFor(() => { expect(screen.getByText(en.balanceUnconfigured)).toBeTruthy() })
+    rejectFirst(new Error('the abandoned read failed'))
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(screen.getByText(en.balanceUnconfigured)).toBeTruthy()
   })
 
   it('aborts the in-flight read when it unmounts', async () => {
