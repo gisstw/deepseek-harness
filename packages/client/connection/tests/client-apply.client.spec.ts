@@ -12,11 +12,12 @@ import {
 } from '../src/client/index.ts'
 
 type Win = {
-  location?: { hostname: string; search: string; origin?: string }
+  location?: { hostname: string; search: string; origin?: string; reload?: () => void }
   __DSH_TRANSPORT__?: ClientTransportHooks
 }
 
 afterEach(() => {
+  delete (globalThis as { document?: unknown }).document
   delete (globalThis as Win).location
   delete (globalThis as Win).__DSH_TRANSPORT__
 })
@@ -442,4 +443,102 @@ describe('connection client apply', () => {
     await expect(handle.rpc.call('/api', 'unknown/read', { args: { agentId: 'fx-alpha' } }))
       .rejects.toThrow(/endpoint.*unavailable/)
   })
+
+  it('reloads the page on an HTTP 401 RPC response, at most once per episode', async () => {
+    const reload = vi.fn()
+    ;(globalThis as Win).location = {
+      hostname: 'proxy.example', search: '', origin: 'https://proxy.example', reload,
+    }
+    const handle = await mount()
+    const original = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('unauthorized', { status: 401 }))
+    try {
+      // Two concurrent 401s must schedule a single navigation.
+      await handle.rpc.call('/api', 'settings/describe', { args: {} }).catch(() => undefined)
+      await handle.rpc.call('/api', 'settings/describe', { args: {} }).catch(() => undefined)
+      await vi.waitFor(() => { expect(reload).toHaveBeenCalledTimes(1) })
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  it('defers the auth-failure reload while the tab is hidden until it becomes visible', async () => {
+    const reload = vi.fn()
+    const addEventListener = vi.fn()
+    ;(globalThis as Win).location = {
+      hostname: 'proxy.example', search: '', origin: 'https://proxy.example', reload,
+    }
+    ;(globalThis as { document?: unknown }).document = {
+      visibilityState: 'hidden', addEventListener,
+    }
+    const handle = await mount()
+    const original = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('unauthorized', { status: 401 }))
+    try {
+      await handle.rpc.call('/api', 'settings/describe', { args: {} }).catch(() => undefined)
+      await new Promise(resolve => setTimeout(resolve, 20))
+      expect(reload).not.toHaveBeenCalled() // backgrounded: the navigation must not start
+      expect(addEventListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function), { once: true })
+      ;(addEventListener.mock.calls[0]?.[1] as () => void)()
+      await vi.waitFor(() => { expect(reload).toHaveBeenCalledTimes(1) })
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  it('tolerates a 401 with no browser location (non-browser carrier consumers)', async () => {
+    delete (globalThis as Win).location
+    const handle = await mount()
+    const original = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('unauthorized', { status: 401 }))
+    try {
+      await handle.rpc.call('/api', 'settings/describe', { args: {} }).catch(() => undefined)
+      await new Promise(resolve => setTimeout(resolve, 20)) // the deferred reload no-ops
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  it('reloads a non-loopback served app once the reconnect loop gives up', async () => {
+    const reload = vi.fn()
+    ;(globalThis as Win).location = {
+      hostname: 'proxy.example', search: '', origin: 'https://proxy.example', reload,
+    }
+    const handle = await mount()
+    const failing: ConnectionGenerationSource = () => Promise.reject(new Error('proxy session expired'))
+    handle.registerGenerationSource(failing)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    // No explicit maxRetries: the served-app default applies.
+    const loop = handle.start({}, { backoffBaseMs: 1, backoffFactor: 1, backoffMaxMs: 1 })
+    try {
+      await vi.waitFor(() => { expect(reload).toHaveBeenCalledTimes(1) }, { timeout: 5000 })
+    } finally {
+      loop.stop()
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('keeps retrying forever on a loopback served app (no reload wiring)', async () => {
+    const reload = vi.fn()
+    ;(globalThis as Win).location = {
+      hostname: 'localhost', search: '', origin: 'http://localhost:3080', reload,
+    }
+    const handle = await mount()
+    let starts = 0
+    const failing: ConnectionGenerationSource = () => {
+      starts++
+      return Promise.reject(new Error('down'))
+    }
+    handle.registerGenerationSource(failing)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const loop = handle.start({}, { backoffBaseMs: 1, backoffFactor: 1, backoffMaxMs: 1 })
+    try {
+      await vi.waitFor(() => { expect(starts).toBeGreaterThan(15) }, { timeout: 5000 })
+      expect(reload).not.toHaveBeenCalled()
+    } finally {
+      loop.stop()
+      warnSpy.mockRestore()
+    }
+  })
+
 })

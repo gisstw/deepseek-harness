@@ -46,6 +46,10 @@ API Gateway Client 把内部 `$events` logical stream 注册为唯一 generation
 `$events` 结束、返回 Remote stream error、收到非 ready 首项或畸形事件项，都会使当前 generation 失效。Controller 立即撤回 generation、发布 `reconnecting`，并在退避后重开 `$events`。Gateway mux 自己负责重建底层 WebSocket；Connection generation 负责重开 logical stream 并建立下一次 baseline 起点。
 
 <a id="model-experience"></a>
+## 认证失效重新加载
+
+浏览器载体把任何 RPC 请求的 HTTP 401 视为前置认证代理的会话已过期：会话过期后 API/XHR 调用会收到 401，而一次全新的浏览器导航会被代理重定向到其登入页。因此它会在每次认证失效场景安排一次带守卫的整页重新加载（`createAuthFailureReload`）——并发 401 与重连放弃路径共用同一次导航，分页在背景时会延后到可见后再导航。经由非 loopback 权威地址访问的 Web 应用还会在连续 12 次重连失败后停止重连并重新加载，而不是无限重试，因为过期的代理会话无法自行恢复；loopback 以及 fixture/transport 壳保留原有的无限重试行为。`ConnectionConfig.maxRetries`（不设置即无限重试）与 `ConnectionSinks.onGiveUp` 向直接使用 `ConnectionController` 的消费方暴露该上限与终止信号。
+
 ## 模型体验
 
 无。协议消费层只在浏览器与主机之间搬运已经组合好的消息；这里没有任何内容进入模型请求。

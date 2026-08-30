@@ -10,6 +10,7 @@ import {
   type ConnectionGenerationSource,
   type ConnectionSinks,
 } from './connection.ts'
+import { createAuthFailureReload } from './auth-reload.ts'
 import { createFixtureConnectionRpc } from './fixture.ts'
 import { createWebConnectionRpc, type RpcFetch, type RpcStreamOpen } from './rpc.ts'
 import { isLoopbackHostname } from '../loopback-hostname.ts'
@@ -60,6 +61,9 @@ export interface ConnectionGenerationState {
   /** Subscribe to generation establishment, replacement, and loss. */
   subscribe(listener: () => void): () => void
 }
+
+/** Consecutive reconnect failures a proxy-served page tolerates before reloading. */
+const PROXY_GIVE_UP_ATTEMPTS = 12
 
 /** Required services (none — this is the wire root). */
 export const inject: string[] = []
@@ -145,7 +149,20 @@ export function apply(ctx: Context): void {
   const fixture = pageLocation !== undefined && new URLSearchParams(pageLocation.search).has('fixture')
   const fixtureRpc = fixture ? createFixtureConnectionRpc() : undefined
   const transport = (globalThis as ClientTransportGlobal).__DSH_TRANSPORT__
-  const rpc = fixtureRpc ?? createWebConnectionRpc(transport?.fetch, transport?.openStream)
+  // A page served through an authentication proxy recovers from an expired
+  // proxy session only by navigating; see createAuthFailureReload.
+  const reloadForAuthFailure = createAuthFailureReload()
+  const carrierFetch: RpcFetch = transport?.fetch ?? ((input, init) => globalThis.fetch(input, init))
+  const rpcFetch: RpcFetch = async (input, init) => {
+    const response = await carrierFetch(input, init)
+    if (response.status === 401) reloadForAuthFailure()
+    return response
+  }
+  const rpc = fixtureRpc ?? createWebConnectionRpc(rpcFetch, transport?.openStream)
+  // Only a page served over a real network authority can sit behind such a
+  // proxy; loopback and fixture/transport shells keep the infinite retry.
+  const servedBehindProxy = !fixture && transport === undefined
+    && pageLocation !== undefined && !isLoopbackHostname(pageLocation.hostname)
   let generationSource: ConnectionGenerationSource | undefined
   let owner: ConnectionOwner | undefined
   let generationId = 0
@@ -196,6 +213,9 @@ export function apply(ctx: Context): void {
       if (source === undefined) throw new Error('connection: no generation source is registered')
       const token = {}
       const ownsGeneration = (): boolean => owner?.token === token
+      const loopConfig: ConnectionConfig = servedBehindProxy
+        ? { maxRetries: PROXY_GIVE_UP_ATTEMPTS, ...config }
+        : config ?? {}
       const controller = new ConnectionController(source, {
         ...sinks,
         onConnected: (host) => {
@@ -211,7 +231,11 @@ export function apply(ctx: Context): void {
           if (!ownsGeneration()) return
           sinks.onStateChange?.(state)
         },
-      }, config ?? {})
+        onGiveUp: () => {
+          if (servedBehindProxy) reloadForAuthFailure()
+          sinks.onGiveUp?.()
+        },
+      }, loopConfig)
       const current = { token, source, controller }
       owner = current
       controller.start()

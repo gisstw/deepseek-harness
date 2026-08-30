@@ -14,6 +14,12 @@ export class FakeGenerationSource {
   /** When true, the source never reports ready. */
   suppressReady = false
 
+  /** When set, every opened generation rejects immediately with this error. */
+  failImmediately: unknown = undefined
+
+  /** How many generations this source has opened since construction. */
+  startCount = 0
+
   /** When true, ready callbacks remain parked until the test releases them. */
   holdReady = false
 
@@ -56,6 +62,8 @@ export class FakeGenerationSource {
         wake?.()
       },
     }
+    this.startCount++
+    if (this.failImmediately !== undefined) throw this.failImmediately
     this.connections.push(connection)
     const ready = (): void => { onReady({ home: '/h' }) }
     if (this.holdReady) this.heldReady.push(ready)

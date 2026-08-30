@@ -283,4 +283,47 @@ describe('connection lifecycle', () => {
       controller.stop()
     }
   })
+
+  it('gives up after maxRetries consecutive failures, fires onGiveUp, and starts no new generation', async () => {
+    const source = new FakeGenerationSource()
+    source.failImmediately = new Error('host down')
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    let connected = 0
+    const gaveUp = vi.fn()
+    const controller = new ConnectionController(source.source, {
+      onConnected: () => { connected++ },
+      onGiveUp: gaveUp,
+    }, { ...FAST, maxRetries: 2 })
+    controller.start()
+    try {
+      await vi.waitFor(() => { expect(gaveUp).toHaveBeenCalledTimes(1) })
+      expect(connected).toBe(0)
+      const attempts = source.startCount
+      await new Promise(resolve => setTimeout(resolve, 60))
+      expect(source.startCount).toBe(attempts) // terminal: no further generation opened
+    } finally {
+      controller.stop()
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('keeps reconnecting forever when maxRetries is unset', async () => {
+    const source = new FakeGenerationSource()
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const gaveUp = vi.fn()
+    const controller = new ConnectionController(source.source, { onGiveUp: gaveUp }, FAST)
+    controller.start()
+    try {
+      await vi.waitFor(() => { expect(source.startCount).toBeGreaterThanOrEqual(1) })
+      source.fail(new Error('down'))
+      await vi.waitFor(() => { expect(source.startCount).toBeGreaterThanOrEqual(2) })
+      source.fail(new Error('down'))
+      await vi.waitFor(() => { expect(source.startCount).toBeGreaterThanOrEqual(3) })
+      expect(gaveUp).not.toHaveBeenCalled()
+    } finally {
+      controller.stop()
+      warnSpy.mockRestore()
+    }
+  })
+
 })

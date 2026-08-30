@@ -46,6 +46,10 @@ API Gateway Client registers the internal `$events` logical stream as the sole g
 An ended `$events` stream, a Remote stream error, a non-ready opening item, or a malformed event item invalidates the current generation. The controller immediately withdraws the generation, publishes `reconnecting`, and reopens `$events` after backoff. Gateway mux reconnects the physical WebSocket; Connection generation reopens the logical stream and establishes the next baseline starting point.
 
 <a id="model-experience"></a>
+## Authentication-failure reload
+
+The browser carrier treats an HTTP 401 from any RPC request as proof that a fronting authentication proxy's session expired: API/XHR calls get 401 once the session expires, while a fresh browser navigation is redirected to the proxy's login page. It therefore schedules one guarded full-page reload per auth-failure episode (`createAuthFailureReload`) — concurrent 401s and the reconnect give-up path share the single navigation, and a hidden tab defers the navigation until it becomes visible. A served web app reached through a non-loopback authority additionally stops its reconnect loop after 12 consecutive failed attempts and reloads instead of retrying forever, since an expired proxy session cannot recover on its own; loopback and fixture/transport shells keep the historical infinite retry. `ConnectionConfig.maxRetries` (unset = retry forever) and `ConnectionSinks.onGiveUp` expose the bound and the terminal signal to direct `ConnectionController` consumers.
+
 ## Model Experience
 
 None, as the wire consumer layer moves already-composed messages between browser and host; nothing here reaches a model request.

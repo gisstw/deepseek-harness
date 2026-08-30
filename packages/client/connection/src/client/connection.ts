@@ -23,9 +23,15 @@ export interface ConnectionConfig {
   backoffMaxMs?: number
   /** Maximum wait for the registered generation source's ready signal. */
   generationReadyTimeoutMs?: number
+  /**
+   * Consecutive failed reconnect attempts after which the loop gives up: it
+   * fires {@link ConnectionSinks.onGiveUp} and stops instead of retrying
+   * forever. Unset keeps reconnecting indefinitely (the historical default).
+   */
+  maxRetries?: number
 }
 
-const CONNECTION_DEFAULTS: Required<ConnectionConfig> = {
+const CONNECTION_DEFAULTS: Required<Omit<ConnectionConfig, 'maxRetries'>> = {
   backoffBaseMs: 500,
   backoffFactor: 2,
   backoffMaxMs: 10_000,
@@ -55,6 +61,8 @@ export interface ConnectionSinks {
   /** Coarse state transitions (deduplicated: fires only on change). The initial pre-connect
    *  span reports nothing — the UI treats "no state yet" as connecting, not as an outage. */
   onStateChange?: (state: ConnectionState) => void
+  /** The loop reached `maxRetries` consecutive failed attempts and stops; no further generation follows. */
+  onGiveUp?: () => void
 }
 
 /**
@@ -81,7 +89,7 @@ export class ConnectionController {
   private current: AbortController | null = null
   private running = false
   private lastState: ConnectionState | null = null
-  private readonly config: Required<ConnectionConfig>
+  private readonly config: Required<Omit<ConnectionConfig, 'maxRetries'>> & { maxRetries?: number }
 
   constructor(
     private readonly source: ConnectionGenerationSource,
@@ -190,6 +198,16 @@ export class ConnectionController {
       if (!this.isRunning()) return
       this.emitState('reconnecting')
       this.attempt += 1
+      const { maxRetries } = this.config
+      if (maxRetries !== undefined && this.attempt >= maxRetries) {
+        // An expired fronting-proxy session cannot recover on its own; the
+        // consumer decides what a terminal loop means (the served web app
+        // reloads so the proxy can answer with its login redirect).
+        this.running = false
+        console.warn(`[connection] giving up after ${String(this.attempt)} consecutive failures`)
+        this.callSink(() => this.sinks.onGiveUp?.())
+        return
+      }
       console.warn(`[connection] connection lost, retry #${this.attempt}`)
       const idle = new AbortController()
       await sleep(this.backoffDelay(this.attempt), idle.signal)
