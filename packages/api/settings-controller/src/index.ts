@@ -205,7 +205,11 @@ export class SettingsController extends TypertRemoteService {
         headers: { authorization: `Bearer ${resolved.value}`, accept: 'application/json' },
         signal,
       })
-    } catch {
+    } catch (error) {
+      // A caller that abandoned the read gets its cancellation back, not a
+      // verdict on the service: reporting an abort as an outage would make an
+      // unmounted page look like a provider failure.
+      if (signal.aborted) throw error
       // The upstream error text is dropped rather than reported: a transport
       // error can quote the request, and the request carries the key.
       return { state: 'unavailable', reason: 'the balance service could not be reached' }

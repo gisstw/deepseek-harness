@@ -1,18 +1,27 @@
 /** DeepSeek account balance line shown above the provider rows. */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { DeepSeekBalanceValue } from '@deepseek-ai/dsh-api-settings-controller/types'
 import type { ModelsWire } from './store.ts'
 import { messageOf } from './store.ts'
 import type { en } from './locales.ts'
 import css from './ModelsSection.module.css'
 
+/**
+ * The Host's balance answer, read off the wire face rather than imported from
+ * the Host package: this plugin has no dependency on the controller, and the
+ * generated Remote contract already carries the type.
+ */
+type BalanceAnswer = Extract<
+  Awaited<ReturnType<ModelsWire['settings']['deepseekBalance']>>,
+  { ok: true }
+>['value']
+
 /** What the line knows while it is being read, and afterwards. */
 type BalanceState =
   | { readonly kind: 'loading' }
-  | { readonly kind: 'value'; readonly value: DeepSeekBalanceValue }
+  | { readonly kind: 'value'; readonly value: BalanceAnswer }
   | { readonly kind: 'failed'; readonly message: string }
 
 /** Dependencies of {@link DeepSeekBalance}. */
@@ -31,7 +40,7 @@ export interface DeepSeekBalanceProps {
  * @param value - the balance answer carrying zero or more currency lines.
  * @returns the joined amounts, or undefined when the answer carries none.
  */
-function amounts(value: DeepSeekBalanceValue): string | undefined {
+function amounts(value: BalanceAnswer): string | undefined {
   const lines = (value.balances ?? []).map(line => `${line.currency} ${line.total}`)
   return lines.length === 0 ? undefined : lines.join(' · ')
 }
@@ -48,26 +57,41 @@ function amounts(value: DeepSeekBalanceValue): string | undefined {
  */
 export function DeepSeekBalance({ api, t }: DeepSeekBalanceProps): ReactNode {
   const [state, setState] = useState<BalanceState>({ kind: 'loading' })
+  // Latest read wins, the way ModelsSettingsStore settles its own reloads: two
+  // Retry clicks leave two requests in flight, and without this the slower
+  // one's answer would land last and replace the newer one.
+  const generation = useRef(0)
+  const inFlight = useRef<AbortController | undefined>(undefined)
 
   const read = useCallback(() => {
-    let live = true
+    const mine = ++generation.current
+    inFlight.current?.abort()
+    const attempt = new AbortController()
+    inFlight.current = attempt
     setState({ kind: 'loading' })
-    void api.settings.deepseekBalance().then(
+    void api.settings.deepseekBalance(attempt.signal).then(
       (result) => {
-        if (!live) return
+        if (mine !== generation.current) return
         setState(result.ok
           ? { kind: 'value', value: result.value }
           : { kind: 'failed', message: result.error.message })
       },
       (error: unknown) => {
-        if (!live) return
+        if (mine !== generation.current) return
         setState({ kind: 'failed', message: messageOf(error) })
       },
     )
-    return () => { live = false }
   }, [api])
 
-  useEffect(() => read(), [read])
+  useEffect(() => {
+    read()
+    // Abandoning the generation is what silences a late answer after unmount;
+    // the abort is for the request itself.
+    return () => {
+      generation.current++
+      inFlight.current?.abort()
+    }
+  }, [read])
 
   const body = ((): { text: string; retry: boolean } => {
     if (state.kind === 'loading') return { text: t('balanceLoading'), retry: false }
