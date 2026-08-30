@@ -27,6 +27,10 @@ English | [中文](README.zh.md)
 
 Open the Models page from the Settings navigation to see every configured provider as a row. A whole-section provider whose key is not configured anywhere renders as its open setup card instead, but only in the first-run posture and only until the user closes that card. Each card kind owns its own open state, so closing one never discards a draft in another.
 
+### Account balance
+
+Above the provider rows the page shows the DeepSeek account balance, read once per mount through `settings.deepseekBalance()` and refreshed only by its explicit retry — the balance is not live data, and this page otherwise converges on pushed invalidations rather than polling. A read that fails renders as a failure, never as a zero balance: those are different facts and only one of them means the account needs topping up. MiniMax carries no balance line because it publishes no such endpoint; the row names its console instead.
+
 ### API keys
 
 The primary field on an editor card is a single **API key** input — the page never asks for an environment-variable name. A typed key stores write-only through `credentials.set` under the profile's reference, deriving `<ROUTE>_API_KEY` when the profile has none, and the pi-ai profile records that derivation as `apiKeyEnv`, so `settings.yaml` never carries a key value. Leaving a new pi-ai provider's key blank saves a reference-free profile and preserves provider-native authentication (for example the Bedrock credential chain or Vertex ADC). A row labels API-key state with a green solid dot only when a referenced credential is confirmed configured, and with a red solid dot only when a named reference is confirmed missing. A successful Apply emits a local accessible status message without echoing secret material.

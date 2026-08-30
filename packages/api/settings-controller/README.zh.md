@@ -29,6 +29,8 @@ kind: "package-reference"
 
 `settings.describe()` 返回部署信息，以及在 `redactSecrets: true` 下读取的所有 namespace。`settings.update`、`settings.replace` 与 `settings.mutate` 暴露 settings service 的三种写入操作，并返回该 namespace 的新脱敏视图；过期写入使用 `settings-conflict`，其他 provider 拒绝使用 `settings-rejected`。
 
+`settings.deepseekBalance()` 在 Host 上解析已配置的 DeepSeek 凭据并用它读取该供应商的账户余额，只写凭据因此不会跨越到浏览器。返回值是三种状态之一——`ok`（每种货币一行）、`unconfigured`（尚未存放密钥）、`unavailable`（读取失败）——因为把读取失败摺叠成余额 0 的调用方，会在余额根本无法查询时报告账户为空。失败文本是固定的，只指出失败类别：存储或传输错误可能引用它当时处理的记录或请求，而两者都带着密钥。
+
 `settings.openSettingsDocument()` 准备 provider 持有的文档，并用原生文本编辑器意图将其打开。`settings.canOpenAgentPresetDirectory()` 在 preset 页面显示时报告原生打开能力。`settings.openAgentPresetDirectory(id)` 只解析用户创作的 preset，并在原生打开不可用时返回目录路径；两个打开方法都不接受浏览器提供的文件系统目标。
 
 -----
@@ -39,6 +41,8 @@ kind: "package-reference"
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `nativeOpen` | 平台探测 | Agent preset 目录能否交给原生桌面打开器 |
+| `deepseekBalanceUrl` | `https://api.deepseek.com/user/balance` | 从哪里读取账户余额；以自有 gateway 前置供应商的部署把它指向那条路由 |
+| `deepseekKeyRef` | `DEEPSEEK_API_KEY` | 余额读取所花用的密钥所在的凭据引用 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-api-settings-controller)是所有受支持字段及其 JSDoc 的完整来源。
 
@@ -58,6 +62,7 @@ kind: "package-reference"
 <a id="known-limitations-and-deferred-work"></a>
 
 - 批量上限固定为 64 个引用，不是可按部署配置的字段。
+- 余额读取只覆盖 DeepSeek。MiniMax 未公开余额端点，因此无法以同样方式服务第二个供应商。
 
 <a id="dev-note"></a>
 ### 开发备注

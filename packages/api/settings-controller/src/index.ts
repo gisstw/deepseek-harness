@@ -21,6 +21,8 @@ import {
   openNativePath,
   openNativeTextFile,
 } from '@deepseek-ai/dsh-native-command'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
+import type { CredentialProvider } from '@deepseek-ai/dsh-credentials'
 import { SettingsConflictError, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import type { SettingsDescriptor, SettingsPathOp, SettingsProvider } from '@deepseek-ai/dsh-settings'
 import type {
@@ -30,17 +32,51 @@ import type { JsonValue } from '@deepseek-ai/dsh-session/types'
 import { Remote, TypertRemoteFailure, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { z } from 'zod'
 import { CredentialsController } from './credentials.ts'
-import type { AgentPresetDirectoryOpenValue, SettingsDocumentOpenValue } from './types.ts'
+import type {
+  AgentPresetDirectoryOpenValue, DeepSeekBalanceLine, DeepSeekBalanceValue, SettingsDocumentOpenValue,
+} from './types.ts'
 
 export { CredentialsController } from './credentials.ts'
 export type * from './types.ts'
 
 const settingsNamespaceRequestSchema = z.object({ ns: z.string().min(1) })
 
-/** Native document-opening policy. */
+const DEFAULT_DEEPSEEK_BALANCE_URL = 'https://api.deepseek.com/user/balance'
+const DEFAULT_DEEPSEEK_KEY_REF = 'DEEPSEEK_API_KEY'
+
+const balanceResponseSchema = z.object({
+  is_available: z.boolean(),
+  balance_infos: z.array(z.object({
+    currency: z.string(),
+    total_balance: z.string(),
+    granted_balance: z.string(),
+    topped_up_balance: z.string(),
+  })),
+})
+
+/**
+ * Project one upstream balance row onto the wire view, field by field, so a
+ * provider that grew extra properties cannot serialize them to the caller.
+ * @param info - one row of the upstream `balance_infos` array.
+ * @returns the four facts a configuration page displays.
+ */
+function balanceLine(info: z.infer<typeof balanceResponseSchema>['balance_infos'][number]): DeepSeekBalanceLine {
+  return {
+    currency: info.currency,
+    total: info.total_balance,
+    toppedUp: info.topped_up_balance,
+    granted: info.granted_balance,
+  }
+}
+
+/** Native document-opening policy and the account-balance endpoint. */
 export interface Config {
   /** Override platform desktop-opener detection. */
   readonly nativeOpen?: boolean
+  /** Where the DeepSeek account balance is read from; a deployment behind a gateway points this at its own route. */
+  readonly deepseekBalanceUrl?: string
+  /** Credential reference holding the DeepSeek API key. */
+  readonly deepseekKeyRef?: string
 }
 
 /** Read abort state afresh after an awaited provider or opener call. */
@@ -53,6 +89,8 @@ export interface SettingsControllerInternals {
   readonly openPath?: (path: string, signal: AbortSignal) => Promise<void>
   readonly openTextFile?: (path: string, signal: AbortSignal) => Promise<void>
   readonly canOpenPath?: () => boolean
+  /** Balance transport, so the read is testable without reaching the network. */
+  readonly fetchBalance?: (input: string, init: RequestInit) => Promise<Response>
 }
 
 /**
@@ -96,6 +134,9 @@ export class SettingsController extends TypertRemoteService {
   private readonly openPath: (path: string, signal: AbortSignal) => Promise<void>
   private readonly openTextFile: (path: string, signal: AbortSignal) => Promise<void>
   private readonly canOpenPath: () => boolean
+  private readonly fetchBalance: (input: string, init: RequestInit) => Promise<Response>
+  private readonly balanceUrl: string
+  private readonly balanceKeyRef: string
 
   /**
    * Register the settings namespace and mount the credentials namespace beside
@@ -109,6 +150,10 @@ export class SettingsController extends TypertRemoteService {
     this.openTextFile = internals.openTextFile ?? openNativeTextFile
     this.canOpenPath = internals.canOpenPath
       ?? (() => config.nativeOpen ?? (internals.openPath !== undefined || canOpenNativePath()))
+    this.fetchBalance = internals.fetchBalance
+      ?? ((input, init) => globalThis.fetch(input, init))
+    this.balanceUrl = config.deepseekBalanceUrl ?? DEFAULT_DEEPSEEK_BALANCE_URL
+    this.balanceKeyRef = config.deepseekKeyRef ?? DEFAULT_DEEPSEEK_KEY_REF
     ctx.plugin(CredentialsController)
   }
 
@@ -125,6 +170,59 @@ export class SettingsController extends TypertRemoteService {
       writable: settings.writable,
       hasDocument: settings.documentPath !== undefined,
       namespaces: settings.describe({ redactSecrets: true }).map(namespaceView),
+    }
+  }
+
+  /**
+   * Read the DeepSeek account balance for the configured API key.
+   *
+   * The key is resolved and spent here because it is a write-only credential:
+   * a browser must never receive it. Every failure keeps its own state — a
+   * page that showed a zero balance for an unreadable account would tell the
+   * operator they are out of money when nobody could ask.
+   * @param signal - caller lifetime; abort cancels the upstream request.
+   * @returns the balances, or the state explaining why there are none.
+   */
+  @Remote
+  async deepseekBalance(signal: AbortSignal): Promise<DeepSeekBalanceValue> {
+    const credentials = this.ctx.get('credentials')
+    let resolved: Awaited<ReturnType<CredentialProvider['resolve']>>
+    try {
+      resolved = credentials === undefined
+        ? undefined
+        : await credentials.resolve(credentialRef(this.balanceKeyRef))
+    } catch {
+      // A store failure is reported as a failed read rather than as a missing
+      // key: "not configured" would send the operator to set a key they set.
+      // The provider's own text is dropped because a store error can quote the
+      // record it was reading.
+      return { state: 'unavailable', reason: 'the stored API key could not be read' }
+    }
+    if (resolved === undefined || resolved.value === '') return { state: 'unconfigured' }
+    let response: Response
+    try {
+      response = await this.fetchBalance(this.balanceUrl, {
+        headers: { authorization: `Bearer ${resolved.value}`, accept: 'application/json' },
+        signal,
+      })
+    } catch {
+      // The upstream error text is dropped rather than reported: a transport
+      // error can quote the request, and the request carries the key.
+      return { state: 'unavailable', reason: 'the balance service could not be reached' }
+    }
+    if (!response.ok) {
+      return { state: 'unavailable', reason: `the balance service answered HTTP ${String(response.status)}` }
+    }
+    let parsed: z.infer<typeof balanceResponseSchema>
+    try {
+      parsed = balanceResponseSchema.parse(await response.json())
+    } catch {
+      return { state: 'unavailable', reason: 'the balance service answered in an unrecognized format' }
+    }
+    return {
+      state: 'ok',
+      isAvailable: parsed.is_available,
+      balances: parsed.balance_infos.map(balanceLine),
     }
   }
 

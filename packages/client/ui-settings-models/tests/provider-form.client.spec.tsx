@@ -107,6 +107,7 @@ function scriptedFace(options: {
       discoverModels: discover,
     },
     settings: {
+      deepseekBalance: vi.fn(() => Promise.resolve(remoteOk({ state: 'unconfigured' }))),
       describe: vi.fn(() => Promise.resolve(remoteOk({ writable: true, namespaces: [namespace] }))),
       mutate,
     },

@@ -87,6 +87,7 @@ function api(overrides: {
       discoverModels: () => Promise.resolve(remoteOk([])),
     },
     settings: {
+      deepseekBalance: () => Promise.resolve(remoteOk({ state: 'unconfigured' })),
       describe: overrides.describeSettings
         ?? (() => Promise.resolve(remoteOk({ writable: true, hasDocument: false, namespaces: NAMESPACES }))),
       mutate: () => Promise.resolve(remoteFail('the store spec issues no writes')),

@@ -40,6 +40,32 @@ export type AgentPresetDirectoryOpenValue =
   | { readonly opened: true }
   | { readonly opened: false; readonly path: string }
 
+/** One currency line of a DeepSeek account balance. */
+export interface DeepSeekBalanceLine {
+  readonly currency: string
+  readonly total: string
+  readonly toppedUp: string
+  readonly granted: string
+}
+
+/**
+ * The DeepSeek account balance as a configuration page may show it.
+ *
+ * The three states stay distinct on purpose: a page that collapsed
+ * `unavailable` into a zero balance would tell the operator they have no money
+ * left when the truth is that nobody could ask.
+ */
+export interface DeepSeekBalanceValue {
+  /** `ok` carries balances; `unconfigured` means no API key; `unavailable` means the read failed. */
+  readonly state: 'ok' | 'unconfigured' | 'unavailable'
+  /** DeepSeek's own verdict on whether the account may still serve requests. */
+  readonly isAvailable?: boolean
+  /** One line per currency the account carries, in the order DeepSeek returned. */
+  readonly balances?: readonly DeepSeekBalanceLine[]
+  /** Why the read failed, safe to display: the key never reaches this text. */
+  readonly reason?: string
+}
+
 /** Stable credential failure details returned by the `credentials` namespace. */
 export interface CredentialErrorDetailsMap {
   /**

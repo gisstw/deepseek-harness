@@ -24,6 +24,9 @@ const PROBE_ROUTE = '\u0000probe'
 /** The credentials Remote methods the Models page reads and writes through. */
 export type ModelsCredentials = Pick<ClientRemote['credentials'], 'describe' | 'set' | 'unset'>
 
+/** The Host-side account-balance read; the API key never leaves the Host. */
+export type ModelsBalanceRemote = Pick<ClientRemote['settings'], 'deepseekBalance'>
+
 /** LLM Remote methods used by the Models page. */
 export type ModelsLlm = Pick<
   ClientRemote['llm'],
@@ -78,7 +81,7 @@ export function joinProviderDirectory(
  */
 export interface ModelsWire {
   /** The settings Remote namespace: the redacted read and the profile writes. */
-  settings: SettingsRemote
+  settings: SettingsRemote & ModelsBalanceRemote
   /** Credential state and writes for the references provider profiles name. */
   credentials: ModelsCredentials
   /** Provider directory reads and draft endpoint discovery. */
