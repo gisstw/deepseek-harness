@@ -657,7 +657,7 @@ describe('connection client apply', () => {
     }
   })
 
-  it('reloads a non-loopback served app once the reconnect loop gives up', async () => {
+  it('reloads a non-loopback served app once the reconnect loop reaches the terminal disconnected state', async () => {
     const reload = vi.fn()
     ;(globalThis as Win).location = {
       hostname: 'proxy.example', search: '', origin: 'https://proxy.example', reload,
@@ -666,8 +666,9 @@ describe('connection client apply', () => {
     const failing: ConnectionGenerationSource = () => Promise.reject(new Error('proxy session expired'))
     handle.registerGenerationSource(failing)
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    // No explicit maxRetries: the served-app default applies.
-    const loop = handle.start({}, { backoffBaseMs: 1, backoffFactor: 1, backoffMaxMs: 1 })
+    // The backoff reaches its max tier and stops; the terminal disconnected
+    // state triggers the proxy-served reload.
+    const loop = handle.start({}, { backoffBaseMs: 1, backoffFactor: 2, backoffMaxMs: 4 })
     try {
       await vi.waitFor(() => { expect(reload).toHaveBeenCalledTimes(1) }, { timeout: 5000 })
     } finally {
@@ -676,22 +677,20 @@ describe('connection client apply', () => {
     }
   })
 
-  it('keeps retrying forever on a loopback served app (no reload wiring)', async () => {
+  it('does not reload a loopback served app when the reconnect loop reaches terminal state', async () => {
     const reload = vi.fn()
     ;(globalThis as Win).location = {
       hostname: 'localhost', search: '', origin: 'http://localhost:3080', reload,
     }
     const handle = await mount()
-    let starts = 0
-    const failing: ConnectionGenerationSource = () => {
-      starts++
-      return Promise.reject(new Error('down'))
-    }
+    const failing: ConnectionGenerationSource = () => Promise.reject(new Error('down'))
     handle.registerGenerationSource(failing)
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const loop = handle.start({}, { backoffBaseMs: 1, backoffFactor: 1, backoffMaxMs: 1 })
+    const loop = handle.start({}, { backoffBaseMs: 1, backoffFactor: 2, backoffMaxMs: 4 })
     try {
-      await vi.waitFor(() => { expect(starts).toBeGreaterThan(15) }, { timeout: 5000 })
+      // The loop reaches the terminal disconnected state and stops on its own;
+      // a loopback page never reloads for a dead server.
+      await vi.waitFor(() => { expect(handle.state.getSnapshot()).toBe('disconnected') }, { timeout: 5000 })
       expect(reload).not.toHaveBeenCalled()
     } finally {
       loop.stop()
