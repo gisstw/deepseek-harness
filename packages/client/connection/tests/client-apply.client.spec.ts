@@ -78,9 +78,12 @@ describe('connection client apply', () => {
       .resolves.toMatchObject({ ok: true })
   })
 
-  it('reports non-loopback page authority through the connection handle', async () => {
+  // nihao-local divergence: this deployment binds the Host to loopback and is
+  // reached only through an authenticating reverse proxy, so page authority is
+  // no longer the thing that decides whether the operator may edit settings.
+  it('treats a page on a real network authority as privileged too', async () => {
     ;(globalThis as Win).location = { hostname: '192.0.2.20', search: '' }
-    expect((await mount()).isLoopback).toBe(false)
+    expect((await mount()).isLoopback).toBe(true)
   })
 
   it('requires one generation source and ignores a stale source disposer', async () => {
