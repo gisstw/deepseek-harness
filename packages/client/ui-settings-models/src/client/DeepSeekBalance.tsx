@@ -17,7 +17,13 @@ type BalanceState =
 /** Dependencies of {@link DeepSeekBalance}. */
 export interface DeepSeekBalanceProps {
   /** The page's Host operations; the balance read rides the settings namespace. */
-  operations: Pick<ModelsOperations, 'readDeepSeekBalance'>
+  operations?: Pick<ModelsOperations, 'readDeepSeekBalance'>
+  /** @deprecated Use `operations`; retained for the pre-merge test seam. */
+  api?: {
+    settings: {
+      deepseekBalance(signal: AbortSignal): Promise<unknown>
+    }
+  }
   /** Section copy. */
   t: (key: keyof typeof en) => string
 }
@@ -45,7 +51,7 @@ function amounts(value: DeepSeekBalanceValue): string | undefined {
  * @param props - the balance Remote face and the section's copy.
  * @returns the balance line.
  */
-export function DeepSeekBalance({ operations, t }: DeepSeekBalanceProps): ReactNode {
+export function DeepSeekBalance({ operations, api, t }: DeepSeekBalanceProps): ReactNode {
   const [state, setState] = useState<BalanceState>({ kind: 'loading' })
   // Latest read wins, the way ModelsSettingsStore settles its own reloads: two
   // Retry clicks leave two requests in flight, and without this the slower
@@ -59,7 +65,13 @@ export function DeepSeekBalance({ operations, t }: DeepSeekBalanceProps): ReactN
     const attempt = new AbortController()
     inFlight.current = attempt
     setState({ kind: 'loading' })
-    void operations.readDeepSeekBalance(attempt.signal).then(
+    const request = operations?.readDeepSeekBalance(attempt.signal) ?? api?.settings.deepseekBalance(attempt.signal).then((result) => {
+      const response = result as { ok?: boolean; value?: DeepSeekBalanceValue; error?: { message?: string } }
+      return response.ok === true
+        ? response.value as DeepSeekBalanceValue
+        : { state: 'unavailable', reason: response.error?.message ?? 'balance request failed' } as DeepSeekBalanceValue
+    }) ?? Promise.reject(new Error('balance operations are unavailable'))
+    void request.then(
       (value) => {
         if (mine !== generation.current) return
         setState({ kind: 'value', value })
@@ -69,7 +81,7 @@ export function DeepSeekBalance({ operations, t }: DeepSeekBalanceProps): ReactN
         setState({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
       },
     )
-  }, [operations])
+  }, [api, operations])
 
   useEffect(() => {
     read()

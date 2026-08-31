@@ -42,6 +42,15 @@ function parseSettingsNamespace(value: string): SettingsNamespace {
   return value as SettingsNamespace
 }
 
+/**
+ * Brand and validate a raw settings namespace for consumers registering a section.
+ * @param value - candidate namespace in lowercase kebab-case.
+ * @returns the validated namespace.
+ */
+export function settingsNamespace(value: string): SettingsNamespace {
+  return parseSettingsNamespace(value)
+}
+
 /** When a namespace's changes take effect for its owner. */
 export type SettingsApplies = 'live' | 'restart'
 
