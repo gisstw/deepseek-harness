@@ -86,6 +86,14 @@
     - id: session-controller
       name: '@deepseek-ai/dsh-api-session-controller'
 
+    - id: pms-assistant-ingress
+      name: '@deepseek-ai/dsh-pms-assistant-ingress'
+      inject: [webServer, sessionController]
+      config:
+        secret: !!js process.env.PMS_ASSISTANT_HMAC_SECRET ?? ''
+        preset: pms-staff-assistant
+        cwd: /home/www/pms-dev
+
     # Configuration-surface reads and writes over Typert Remote. Each method
     # reports an actionable error when its settings-domain provider is absent.
     - id: settings-controller
