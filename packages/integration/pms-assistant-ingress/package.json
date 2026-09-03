@@ -1,0 +1,15 @@
+{
+  "name": "@deepseek-ai/dsh-pms-assistant-ingress",
+  "version": "0.1.2-alpha.2",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": { ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" }, "./src/*": "./src/*" },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-api-session-controller": "workspace:^",
+    "@deepseek-ai/dsh-host-webserver": "workspace:^",
+    "@deepseek-ai/dsh-session": "workspace:^"
+  },
+  "dependencies": { "@deepseek-ai/schemastery": "workspace:^" }
+}
