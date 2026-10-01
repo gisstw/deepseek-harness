@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PMS staff composition materializes the owned record-only capability schema 1`] = `
+{
+  "properties": {
+    "capability": {
+      "enum": [
+        "guest.checkout_time.read",
+        "wish.submit",
+        "recipe.create",
+        "change.request.propose",
+      ],
+      "type": "string",
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object",
+    },
+  },
+  "required": [
+    "capability",
+    "payload",
+  ],
+  "type": "object",
+}
+`;

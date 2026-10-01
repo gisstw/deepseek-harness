@@ -17,9 +17,9 @@ export function apply(ctx: Context, rawConfig: Config): void {
   const config = rawConfig as Required<Config>
   ctx.tools.register(defineTool({
     name: 'pms_capability',
-    description: 'Use the only approved PMS capability. Available ids: guest.checkout_time.read, wish.submit, recipe.create. Unknown ids are denied by PMS. recipe.create only creates a preview proposal and never writes until the employee confirms in PMS.',
+    description: 'Use an approved PMS capability: guest.checkout_time.read, wish.submit, recipe.create, change.request.propose. change.request.propose records a bug or feature request only; it never builds or deploys. Its payload requires client_request_id (a stable unique id reused on retry), kind (bug or feature), module (general or wish.incomplete-filter), title, current_behavior; expected_behavior is optional. Return the PMS-provided case URL to the employee. recipe.create only creates a proposal until the employee confirms in PMS. Unknown capabilities are denied.',
     parameters: {
-      capability: { type: 'string', required: true, enum: ['guest.checkout_time.read', 'wish.submit', 'recipe.create'] },
+      capability: { type: 'string', required: true, enum: ['guest.checkout_time.read', 'wish.submit', 'recipe.create', 'change.request.propose'] },
       payload: { type: 'object', required: true, additionalProperties: true, properties: {} },
     },
     output: {
