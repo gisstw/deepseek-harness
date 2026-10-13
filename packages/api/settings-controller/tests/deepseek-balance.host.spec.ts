@@ -29,7 +29,7 @@ async function boot(
 ): Promise<SettingsController> {
   const ctx = new Context()
   await ctx.plugin(MemoryCredentials, seed)
-  return new SettingsController(ctx, {}, fetchBalance === undefined ? {} : { fetchBalance })
+  return new SettingsController(ctx, fetchBalance === undefined ? {} : { fetchBalance })
 }
 
 /** A store whose resolve fails the way a locked or corrupt backing file would. */
@@ -43,7 +43,7 @@ describe('the DeepSeek balance read', () => {
   it('reports a credential-store failure as unreadable, not as a missing key', async () => {
     const ctx = new Context()
     await ctx.plugin(FailingCredentials, { DEEPSEEK_API_KEY: 'sk-live' })
-    const controller = new SettingsController(ctx, {}, { fetchBalance: () => { throw new Error('unreachable') } })
+    const controller = new SettingsController(ctx, { fetchBalance: () => { throw new Error('unreachable') } })
     const value = await controller.deepseekBalance(new AbortController().signal)
     expect(value.state).toBe('unavailable')
     expect(value.reason).not.toContain('.credentials.yaml')
@@ -135,7 +135,7 @@ describe('the DeepSeek balance read', () => {
 
   it('says unconfigured when no credential provider is mounted at all', async () => {
     const ctx = new Context()
-    const controller = new SettingsController(ctx, {}, {
+    const controller = new SettingsController(ctx, {
       fetchBalance: () => { throw new Error('unreachable') },
     })
     expect(await controller.deepseekBalance(new AbortController().signal))

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { signingPath } from '../src/index.ts'
 
-const preset = fileURLToPath(new URL('../../../preset/agent-presets/presets/pms-staff-assistant/agent.cordis.yml', import.meta.url))
+const preset = fileURLToPath(new URL('../../../bundle/web-app/presets/pms-staff-assistant.patch.yml', import.meta.url))
 
 describe('PMS staff assistant preset fence', () => {
   it('advertises change intake without granting build or shell capabilities', async () => {
@@ -25,7 +25,7 @@ describe('PMS staff assistant preset fence', () => {
   it('mounts only the complete persona and the PMS capability tool', async () => {
     const source = await readFile(preset, 'utf8')
     const packages = [...source.matchAll(/^\s*name:\s*'([^']+)'\s*$/gm)].map(match => match[1])
-    expect(packages).toEqual(['@deepseek-ai/dsh-persona', '@deepseek-ai/dsh-tool-pms-assistant'])
+    expect(packages).toEqual(['@deepseek-ai/dsh-agent-preset', '@deepseek-ai/dsh-persona', '@deepseek-ai/dsh-tool-pms-assistant'])
     expect(source).not.toMatch(/dsh-tool-(?:bash|pwsh|fs|web|mcp|subagent|cordis)/)
     expect(source).toContain('complete: true')
     expect(source).toContain('完整信用卡號')

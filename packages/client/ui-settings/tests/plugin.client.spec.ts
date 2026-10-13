@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply, inject } from '../src/client/index.ts'
 import { SettingsSchemaService } from '../src/client/schema.ts'
-import { SettingsScopeBinder } from '../src/client/settings-scope.ts'
+import { ConfigForms } from '../src/client/config-form.ts'
 
 function bench() {
   const describeCall = vi.fn().mockResolvedValue({
@@ -15,10 +15,10 @@ function bench() {
 }
 
 describe('settings domain base plugin', () => {
-  it('mounts the scope service under settingsScope and reads once eagerly', async () => {
+  it('mounts the scope service under configForms and reads once eagerly', async () => {
     const { ctx, describeCall, fiber } = bench()
     await fiber.await()
-    expect(ctx.get('settingsScope')).toBeInstanceOf(SettingsScopeBinder)
+    expect(ctx.get('configForms')).toBeInstanceOf(ConfigForms)
     expect(ctx.get('settingsSchema')).toBeInstanceOf(SettingsSchemaService)
     await vi.waitFor(() => { expect(describeCall).toHaveBeenCalledTimes(1) })
   })
@@ -38,7 +38,7 @@ describe('settings domain base plugin', () => {
     await fiber.await()
     await vi.waitFor(() => { expect(describeCall).toHaveBeenCalledTimes(1) })
     await fiber.dispose()
-    expect(ctx.get('settingsScope')).toBeUndefined()
+    expect(ctx.get('configForms')).toBeUndefined()
     expect(ctx.get('settingsSchema')).toBeUndefined()
     remote.emit('settings/document-updated', ['ui-test', 0])
     ctx.emit('connection/reset')

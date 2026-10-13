@@ -33,11 +33,6 @@ export interface SettingsDocumentOpenValue {
   readonly opened: true
 }
 
-/** Result of opening or revealing one locally authored Agent preset directory. */
-export type AgentPresetDirectoryOpenValue =
-  | { readonly opened: true }
-  | { readonly opened: false; readonly path: string }
-
 /** One currency line of a DeepSeek account balance. */
 export interface DeepSeekBalanceLine {
   readonly currency: string

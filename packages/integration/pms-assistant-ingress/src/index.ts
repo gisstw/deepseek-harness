@@ -62,7 +62,7 @@ function sse(res: ServerResponse, events: Turn['events']): void {
 }
 function proposalOf(event: SessionEvent): Record<string, unknown> | undefined {
   if (event.type !== 'tool/result') return undefined
-  const blocks = event.data.message.content[0].content
+  const blocks = event.data.message.content
   for (const block of blocks) {
     if (block.type !== 'text') continue
     try {
