@@ -138,6 +138,14 @@ describe('connection client apply', () => {
     expect((await mount()).isLoopback).toBe(true)
   })
 
+  // The divergence is limited to the served web app: a page that installs its
+  // own transport (a Live Share viewer) keeps upstream's authority test.
+  it('keeps a page transport on a real network authority unprivileged', async () => {
+    ;(globalThis as Win).location = { hostname: '192.0.2.20' }
+    vi.stubGlobal('__DSH_TRANSPORT__', { fetch: vi.fn() })
+    expect((await mount()).isLoopback).toBe(false)
+  })
+
   it('requires one generation source and ignores a stale source disposer', async () => {
     ;(globalThis as Win).location = { hostname: 'localhost' }
     const handle = await mount()

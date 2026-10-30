@@ -14,12 +14,12 @@ export const en = {
   deleteDescription: 'Deleting {provider} removes its configuration. Any credential it uses is managed elsewhere and will be kept.',
   deleteDescriptionWithCredential: 'Deleting {provider} removes its configuration and stored API key.',
   deleteConfirm: 'Delete {provider}',
-  balanceLabel: 'DeepSeek account balance',
-  balanceLoading: 'Reading balance…',
-  balanceUnconfigured: 'No API key set yet.',
-  balanceUnavailable: 'Balance could not be read.',
-  balanceRetry: 'Retry',
-  balanceMinimax: 'MiniMax publishes no balance API; see its console.',
+  'balanceLabel': 'DeepSeek account balance',
+  'balanceLoading': 'Reading balance…',
+  'balanceUnconfigured': 'No API key set yet.',
+  'balanceUnavailable': 'Balance could not be read.',
+  'balanceRetry': 'Retry',
+  'balanceMinimax': 'MiniMax publishes no balance API; see its console.',
   deleting: 'Deleting {provider}…',
   add: 'Add model provider',
   addMode: 'How to add',
@@ -164,12 +164,12 @@ export const zh: { [Key in keyof typeof en]: string } = {
   deleteDescription: '删除 {provider} 会移除其配置；其使用的凭证（如有）由其他位置管理，将会保留。',
   deleteDescriptionWithCredential: '删除 {provider} 会移除其配置和存储的 API 密钥。',
   deleteConfirm: '删除 {provider}',
-  balanceLabel: 'DeepSeek 账户余额',
-  balanceLoading: '正在读取余额…',
-  balanceUnconfigured: '尚未设置 API 密钥。',
-  balanceUnavailable: '读不到余额。',
-  balanceRetry: '重试',
-  balanceMinimax: 'MiniMax 未提供余额查询 API，请前往其控制台查看。',
+  'balanceLabel': 'DeepSeek 账户余额',
+  'balanceLoading': '正在读取余额…',
+  'balanceUnconfigured': '尚未设置 API 密钥。',
+  'balanceUnavailable': '读不到余额。',
+  'balanceRetry': '重试',
+  'balanceMinimax': 'MiniMax 未提供余额查询 API，请前往其控制台查看。',
   deleting: '正在删除 {provider}…',
   add: '添加模型提供商',
   addMode: '添加方式',
@@ -299,6 +299,12 @@ export const zh: { [Key in keyof typeof en]: string } = {
 
 /** Japanese copy, checked against the English keys. */
 export const ja = {
+  'balanceLabel': 'DeepSeek アカウント残高',
+  'balanceLoading': '残高を読み込み中…',
+  'balanceUnconfigured': 'API キーがまだ設定されていません。',
+  'balanceUnavailable': '残高を読み取れませんでした。',
+  'balanceRetry': '再試行',
+  'balanceMinimax': 'MiniMax は残高 API を公開していません。コンソールで確認してください。',
   'nav': 'モデル',
   'deepSeekAccount': 'DeepSeekアカウント',
   'title': 'モデル',
@@ -440,6 +446,12 @@ export const ja = {
 
 /** Spanish dictionary, checked against the English keys. */
 export const es = {
+  'balanceLabel': 'Saldo de la cuenta de DeepSeek',
+  'balanceLoading': 'Leyendo el saldo…',
+  'balanceUnconfigured': 'Aún no hay una clave de API.',
+  'balanceUnavailable': 'No se pudo leer el saldo.',
+  'balanceRetry': 'Reintentar',
+  'balanceMinimax': 'MiniMax no publica una API de saldo; consulta su consola.',
   nav: 'Modelos',
   deepSeekAccount: 'Cuenta DeepSeek',
   title: 'Modelos',
@@ -581,6 +593,12 @@ export const es = {
 
 /** French dictionary, checked against the English keys. */
 export const fr = {
+  'balanceLabel': 'Solde du compte DeepSeek',
+  'balanceLoading': 'Lecture du solde…',
+  'balanceUnconfigured': 'Aucune clé API définie pour l’instant.',
+  'balanceUnavailable': 'Impossible de lire le solde.',
+  'balanceRetry': 'Réessayer',
+  'balanceMinimax': 'MiniMax ne publie pas d’API de solde ; consultez sa console.',
   nav: 'Modèles',
   deepSeekAccount: 'Compte DeepSeek',
   title: 'Modèles',
@@ -722,6 +740,12 @@ export const fr = {
 
 /** German dictionary, checked against the English keys. */
 export const de = {
+  'balanceLabel': 'DeepSeek-Kontostand',
+  'balanceLoading': 'Kontostand wird gelesen…',
+  'balanceUnconfigured': 'Noch kein API-Schlüssel festgelegt.',
+  'balanceUnavailable': 'Kontostand konnte nicht gelesen werden.',
+  'balanceRetry': 'Erneut versuchen',
+  'balanceMinimax': 'MiniMax bietet keine Kontostand-API; siehe dessen Konsole.',
   nav: 'Modelle',
   deepSeekAccount: 'DeepSeek-Konto',
   title: 'Modelle',
@@ -863,6 +887,12 @@ export const de = {
 
 /** Russian dictionary, checked against the English keys. */
 export const ru = {
+  'balanceLabel': 'Баланс аккаунта DeepSeek',
+  'balanceLoading': 'Чтение баланса…',
+  'balanceUnconfigured': 'Ключ API ещё не задан.',
+  'balanceUnavailable': 'Не удалось прочитать баланс.',
+  'balanceRetry': 'Повторить',
+  'balanceMinimax': 'MiniMax не предоставляет API баланса; смотрите его консоль.',
   nav: 'Модели',
   deepSeekAccount: 'DeepSeek Аккаунт',
   title: 'Модели',
@@ -1004,6 +1034,12 @@ export const ru = {
 
 /** Portuguese dictionary, checked against the English keys. */
 export const pt = {
+  'balanceLabel': 'Saldo da conta DeepSeek',
+  'balanceLoading': 'Lendo o saldo…',
+  'balanceUnconfigured': 'Nenhuma chave de API definida ainda.',
+  'balanceUnavailable': 'Não foi possível ler o saldo.',
+  'balanceRetry': 'Tentar novamente',
+  'balanceMinimax': 'A MiniMax não publica uma API de saldo; consulte o console dela.',
   nav: 'Modelos',
   deepSeekAccount: 'DeepSeek Conta',
   title: 'Modelos',

@@ -10,6 +10,7 @@ import {
 } from './connection.ts'
 import { createAuthFailureReload } from './auth-reload.ts'
 import { createWebConnectionRpc, type RpcFetch, type RpcStreamOpen } from './rpc.ts'
+import { isLoopbackHostname } from '../loopback-hostname.ts'
 import type { ClientConnectionRpc } from '../rpc.ts'
 import { resolveConnectionConfig } from '../recovery-config.ts'
 import type { ConnectionInteractions } from '../connect-protocol.ts'
@@ -153,8 +154,9 @@ export interface ConnectionHandle {
    * Whether the privileged surface is reachable. Upstream reports this for a
    * loopback page authority, a transport declaring the page owns the Host
    * ({@link ClientTransportHooks.ownsHost}), or a non-browser context; this
-   * fork always reports it, because the deployment authenticates the page
-   * ahead of the Host (see the value in `installConnection`).
+   * fork always reports it for the served web app (no page transport),
+   * because the deployment authenticates the page ahead of the Host (see the
+   * value in `installConnection`).
    */
   readonly isLoopback: boolean
   /** Current Remote event generation and the Host facts carried by its opening frame. */
@@ -289,7 +291,11 @@ export function installConnection(ctx: Context, options: ConnectionInstallOption
     // all already proves what upstream infers from the authority. Keeping the
     // authority test would leave the settings surface a read-only shell for
     // the only person who can open it.
-    isLoopback: true,
+    // The divergence covers only the served web app, which installs no page
+    // transport. A page that brings its own carrier (a Live Share viewer, the
+    // webworker shell) can be opened by someone else, so it keeps upstream's test.
+    isLoopback: transport === undefined
+      || transport.ownsHost === true || pageLocation === undefined || isLoopbackHostname(pageLocation.hostname),
     generation: {
       getSnapshot: () => generation,
       subscribe: (listener) => {
