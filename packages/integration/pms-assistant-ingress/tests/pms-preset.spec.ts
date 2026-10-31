@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { signingPath } from '../src/index.ts'
+import { pinnedModel, signingPath } from '../src/index.ts'
 
 const preset = fileURLToPath(new URL('../../../bundle/web-app/presets/pms-staff-assistant.patch.yml', import.meta.url))
 
@@ -21,6 +21,15 @@ describe('PMS staff assistant preset fence', () => {
   it('keeps turn creation on the collection URL used by the Laravel contract', () => {
     expect(signingPath('/v1/integrations/pms/conversations/s1/turns'))
       .toBe('/conversations/s1/turns')
+  })
+  it('pins conversation creation to the DeepSeek Flash model under its current and legacy ids', () => {
+    const preset = 'pms-staff-assistant'
+    expect(pinnedModel({ provider: 'deepseek-official', model: 'deepseek-flash', preset }, preset)).toBe('deepseek-flash')
+    expect(pinnedModel({ provider: 'deepseek-official', model: 'deepseek-v4-flash', preset }, preset)).toBe('deepseek-v4-flash')
+    expect(pinnedModel({ provider: 'deepseek-official', model: 'deepseek-v4-pro', preset }, preset)).toBeUndefined()
+    expect(pinnedModel({ provider: 'minimax', model: 'deepseek-flash', preset }, preset)).toBeUndefined()
+    expect(pinnedModel({ provider: 'deepseek-official', model: 'deepseek-flash', preset: 'other' }, preset)).toBeUndefined()
+    expect(pinnedModel({ provider: 'deepseek-official', preset }, preset)).toBeUndefined()
   })
   it('mounts only the complete persona and the PMS capability tool', async () => {
     const source = await readFile(preset, 'utf8')

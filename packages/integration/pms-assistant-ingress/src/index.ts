@@ -30,6 +30,17 @@ export function signingPath(rawUrl: string): string {
   const url = new URL(rawUrl, 'http://localhost')
   return url.pathname.slice('/v1/integrations/pms'.length) + url.search
 }
+/** DeepSeek Flash ids a PMS client may pin: the current id and the legacy id DeepSeek still serves. */
+const PINNED_MODELS: readonly string[] = ['deepseek-flash', 'deepseek-v4-flash']
+/** Check a conversation-create request against the provider, model, and preset fence.
+ * @param data Parsed request fields.
+ * @param preset Preset this ingress serves.
+ * @returns The requested model id when every field matches the fence, otherwise `undefined`.
+ */
+export function pinnedModel(data: Record<string, unknown>, preset: string): string | undefined {
+  if (data.provider !== 'deepseek-official' || data.preset !== preset || typeof data.model !== 'string') return undefined
+  return PINNED_MODELS.includes(data.model) ? data.model : undefined
+}
 async function body(req: IncomingMessage, max: number): Promise<string> {
   const parts: Buffer[] = []; let size = 0
   for await (const chunk of req) { const b = Buffer.from(chunk); size += b.length; if (size > max) throw new Error('body too large'); parts.push(b) }
@@ -92,9 +103,10 @@ export function apply(ctx: Context, rawConfig: Config): void {
       const path = new URL(req.url ?? '/', 'http://localhost').pathname
       const create = path === '/v1/integrations/pms/conversations' && req.method === 'POST'
       if (create) {
-        if (data.provider !== 'deepseek-official' || data.model !== 'deepseek-v4-flash' || data.preset !== config.preset) return reply(res, 422, { code: 'PIN_MISMATCH' })
+        const model = pinnedModel(data, config.preset)
+        if (model === undefined) return reply(res, 422, { code: 'PIN_MISMATCH' })
         const made = await ctx.sessionController.create({ cwd: config.cwd, agentPreset: config.preset })
-        await ctx.sessionController.selectModel({ sessionId: made.sessionId, provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+        await ctx.sessionController.selectModel({ sessionId: made.sessionId, provider: 'deepseek-official', model })
         sessions.set(made.sessionId, new Map()); return reply(res, 201, { session_id: made.sessionId })
       }
       const match = path.match(/^\/v1\/integrations\/pms\/conversations\/([^/]+)(?:\/turns(?:\/([^/]+)(?:\/(events|cancel))?)?)?$/)
