@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-10-pms-change-intake.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/bug-fix/2026-09-10-pms-change-intake.md
-2026-09-10-pms-change-intake.md: 327b35f6f2af7cfac40f72374e70c3125ffb87df
-2026-09-10-pms-change-intake.zh.md: 90fc2c963c9f03973a614f78e2f88b6140cb4f4b
+/agent-note-pms-change-request-intake:
+  en: d2d6aee979b10f14
+  zh: 24c354e83ca06b1f
+/agent-note-pms-change-request-intake/problem:
+  en: 9684ad5039476f9a
+  zh: 144dcc6cba820a24
+/agent-note-pms-change-request-intake/proposal:
+  en: 96ae8f6ea506a013
+  zh: 311e28d60bca9c82
+/agent-note-pms-change-request-intake/alternatives-considered:
+  en: d646665c948e8ad7
+  zh: 86949aadd2bc522e
+/agent-note-pms-change-request-intake/acceptance-criteria:
+  en: 1f30208a13ec9598
+  zh: e6f812429102e3cf
+/agent-note-pms-change-request-intake/risks:
+  en: e4f1a85c3af371f1
+  zh: a0e8b16f4ba09afb

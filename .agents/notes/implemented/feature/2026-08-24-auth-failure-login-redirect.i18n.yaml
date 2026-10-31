@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-24-auth-failure-login-redirect.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-auth-failure-login-redirect.md
-2026-08-24-auth-failure-login-redirect.md: 07c6698dea58fc163da0f6d70880c7d9e57acb27
-2026-08-24-auth-failure-login-redirect.zh.md: e1778209e29fdfa266331bc8a0155d008450fbde
+/agent-note-auth-failure-login-redirect-for-proxy-served-web-apps:
+  en: fdf2ef1932fb9915
+  zh: 7cfed3476b7e9abb
+/agent-note-auth-failure-login-redirect-for-proxy-served-web-apps/problem:
+  en: 9662e21de4049132
+  zh: 669e632ef5306403
+/agent-note-auth-failure-login-redirect-for-proxy-served-web-apps/decision:
+  en: c574bbeaaad5f683
+  zh: 41f98d3016658295
+/agent-note-auth-failure-login-redirect-for-proxy-served-web-apps/alternatives-considered:
+  en: 9e23a612afb56f36
+  zh: de04bb24335bd7be
+/agent-note-auth-failure-login-redirect-for-proxy-served-web-apps/consequences:
+  en: 24aa3ba39146e657
+  zh: e67bc1e8b6f16329
